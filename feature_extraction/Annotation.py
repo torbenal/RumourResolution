@@ -14,95 +14,101 @@ regex_quote = re.compile(r">(.+?)\n")
 
 rand = random.Random(42)
 
-class RedditAnnotation:
+class Tweet:
         
     # initialises comment annotation class given json
     def __init__(self, json, is_source=False, test=False, live=False):
-        self.is_source = is_source
 
-        if test:
-            self.comment_id = "test"
-            self.text = json
-            self.tokens = word_tokenize(json.lower())
-            
-            # sdcq is just placeholder values
-            self.sdqc_parent = "Supporting"
-            self.sdqc_submission = "Supporting"
-            return
-        
-        if live:
-            comment_json = json
-        else:
-            comment_json = json["comment"] if not is_source else json
-            
-        self.text = comment_json["text"]
-        self.text = self.filter_reddit_quotes(self.text)
+        self.text = json['text']
         self.text = self.filter_text_urls(self.text)
+        self.tokens = self.tokenize(self.text)
+        self.tweet_id = json['id']
+
+        # self.is_source = is_source
+
+        # if test:
+        #     self.comment_id = "test"
+        #     self.text = json
+        #     self.tokens = word_tokenize(json.lower())
+            
+        #     # sdcq is just placeholder values
+        #     self.sdqc_parent = "Supporting"
+        #     self.sdqc_submission = "Supporting"
+        #     return
+        
+        # if live:
+        #     comment_json = json
+        # else:
+        #     comment_json = json["comment"] if not is_source else json
+            
+        # self.text = comment_json["text"]
+        # self.text = self.filter_reddit_quotes(self.text)
+        # self.text = self.filter_text_urls(self.text)
 
         self.sim_to_src = 0
         self.sim_to_prev = 0
         self.sim_to_branch = 0
-        if is_source:
-            self.comment_id = comment_json["submission_id"]
-            self.title = json["title"]
-            self.num_comments = json["num_comments"]
-            self.url = json["url"]
-            self.text_url = json["text_url"]
-            self.is_video = json["is_video"]
-            # self.subreddit = json["subreddit"] # irrelevant
-            # self.comments = json["comments"] # irrelevant
-            self.reply_count = comment_json["num_comments"]
-            self.is_submitter = True
-            self.is_rumour = json["IsRumour"]
-            self.is_irrelevant = json["IsIrrelevant"]
-            self.truth_status = json["TruthStatus"]
-            self.rumour = json["RumourDescription"]
-            sdqc_source = json["SourceSDQC"]
-            sdqc = "Commenting" if sdqc_source == "Underspecified" else sdqc_source
-            self.sdqc_parent = sdqc
-            self.sdqc_submission = sdqc
-            self.tokens = self.tokenize(self.title)
-        else:
-            # comment specific info
-            self.comment_id = comment_json["comment_id"]
-            self.parent_id = comment_json["parent_id"]
-            self.comment_url = comment_json["comment_url"]
-            self.is_submitter = comment_json["is_submitter"]
-            self.is_deleted = comment_json["is_deleted"]
-            self.reply_count = comment_json["replies"]
-            self.tokens = self.tokenize(self.text)
+        # if is_source:
+        #     self.comment_id = comment_json["submission_id"]
+        #     self.title = json["title"]
+        #     self.num_comments = json["num_comments"]
+        #     self.url = json["url"]
+        #     self.text_url = json["text_url"]
+        #     self.is_video = json["is_video"]
+        #     # self.subreddit = json["subreddit"] # irrelevant
+        #     # self.comments = json["comments"] # irrelevant
+        #     self.reply_count = comment_json["num_comments"]
+        #     self.is_submitter = True
+        #     self.is_rumour = json["IsRumour"]
+        #     self.is_irrelevant = json["IsIrrelevant"]
+        #     self.truth_status = json["TruthStatus"]
+        #     self.rumour = json["RumourDescription"]
+        #     sdqc_source = json["SourceSDQC"]
+        #     sdqc = "Commenting" if sdqc_source == "Underspecified" else sdqc_source
+        #     self.sdqc_parent = sdqc
+        #     self.sdqc_submission = sdqc
+        #     self.tokens = self.tokenize(self.title)
+        # else:
+        #     # comment specific info
+        #     self.comment_id = comment_json["comment_id"]
+        #     self.parent_id = comment_json["parent_id"]
+        #     self.comment_url = comment_json["comment_url"]
+        #     self.is_submitter = comment_json["is_submitter"]
+        #     self.is_deleted = comment_json["is_deleted"]
+        #     self.reply_count = comment_json["replies"]
+        #     self.tokens = self.tokenize(self.text)
 
-            # annotation info
-            if not live: # live have not been annotated
-                self.annotator = json["annotator"]
-                self.sdqc_parent = comment_json["SDQC_Parent"]
-                self.sdqc_submission = comment_json["SDQC_Submission"]
-                self.certainty = comment_json["Certainty"]
-                self.evidentiality = comment_json["Evidentiality"]
-                self.annotated_at = comment_json["AnnotatedAt"]
+        #     # annotation info
+        #     if not live: # live have not been annotated
+        #         self.annotator = json["annotator"]
+        #         self.sdqc_parent = comment_json["SDQC_Parent"]
+        #         self.sdqc_submission = comment_json["SDQC_Submission"]
+        #         self.certainty = comment_json["Certainty"]
+        #         self.evidentiality = comment_json["Evidentiality"]
+        #         self.annotated_at = comment_json["AnnotatedAt"]
 
-        # general info
-        self.submission_id = comment_json["submission_id"]
-        self.created = comment_json["created"]
-        self.upvotes = comment_json["upvotes"]
+        # # general info
+        # self.submission_id = comment_json["submission_id"]
+        # self.created = comment_json["created"]
+        # self.upvotes = comment_json["upvotes"]
 
-        # user info
-        if "id" in comment_json["user"]: # to skip deleted users
-            self.user_id = comment_json["user"]["id"]
-            self.user_name = comment_json["user"]["username"]
-            self.user_created = comment_json["user"]["created"]
-            self.user_karma = comment_json["user"]["karma"]
-            self.user_gold_status = comment_json["user"]["gold_status"]
-            self.user_is_employee = comment_json["user"]["is_employee"]
-            self.user_has_verified_email = comment_json["user"]["has_verified_email"]
-        else: # default values
-            self.user_id = 'deleted'
-            self.user_name = 'deleted'
-            self.user_created = '1970-01-01 00:00:00'
-            self.user_karma = 0
-            self.user_gold_status = False
-            self.user_is_employee = False
-            self.user_has_verified_email = False
+        # # user info
+        # if "id" in comment_json["user"]: # to skip deleted users
+        #     self.user_id = comment_json["user"]["id"]
+        #     self.user_name = comment_json["user"]["username"]
+        #     self.user_created = comment_json["user"]["created"]
+        #     self.user_karma = comment_json["user"]["karma"]
+        #     self.user_gold_status = comment_json["user"]["gold_status"]
+        #     self.user_is_employee = comment_json["user"]["is_employee"]
+        #     self.user_has_verified_email = comment_json["user"]["has_verified_email"]
+        # else: # default values
+        #     self.user_id = 'deleted'
+        #     self.user_name = 'deleted'
+        #     self.user_created = '1970-01-01 00:00:00'
+        #     self.user_karma = 0
+        #     self.user_gold_status = False
+        #     self.user_is_employee = False
+        #     self.user_has_verified_email = False
 
     def tokenize(self, text):
         # Convert all words to lower case and tokenize
@@ -147,7 +153,7 @@ def read_lexicon(file_path):
 def count_lexicon_occurence(words, lexion):
     return sum([1 if word in lexion else 0 for word in words])
 
-class RedditDataset:
+class TwitterDataset:
     def __init__(self):
         self.annotations = {}
         self.anno_to_branch_tokens = {}
@@ -157,7 +163,7 @@ class RedditDataset:
         self.last_submission = lambda: len(self.submissions) - 1
         # mapping from property to tuple: (min, max)
         self.min_max = {
-            'karma': [0, 0],
+            # 'karma': [0, 0],
             'txt_len': [0, 0],
             'tokens_len': [0, 0],
             'avg_word_len': [0, 0],
@@ -165,7 +171,7 @@ class RedditDataset:
             'reply_count': [0, 0],
             'afinn_score': [0,0],
             'url_count': [0, 0],
-            'quote_count': [0, 0],
+            # 'quote_count': [0, 0],
             'cap_sequence_max_len': [0, 0],
             'tripDotCount': [0, 0],
             'q_mark_count': [0, 0],
@@ -203,8 +209,8 @@ class RedditDataset:
     def add_annotation(self, annotation):
         """Add to self.annotations. Should only be uses for testing purposes"""
         annotation = self.analyse_annotation(annotation)
-        if annotation.comment_id not in self.annotations:
-            self.annotations[annotation.comment_id] = annotation
+        if annotation.tweet_id not in self.annotations:
+            self.annotations[annotation.tweet_id] = annotation
 
     def add_reddit_submission(self, source):
         self.submissions.append(RedditSubmission(RedditAnnotation(source, is_source=True)))
@@ -212,30 +218,30 @@ class RedditDataset:
     def add_submission_branch(self, branch, sub_sample=False):
         annotation_branch = []
         branch_tokens = []
-        class_comments = 0
+        # class_comments = 0
         # First, convert to Python objects
         for annotation in branch:
-            annotation = RedditAnnotation(annotation)
-            if self.sdqc_to_int[annotation.sdqc_submission] == 3:
-                class_comments += 1
+            annotation = Tweet(annotation)
+            # if self.sdqc_to_int[annotation.sdqc_submission] == 3:
+            #     class_comments += 1
             branch_tokens.extend(annotation.tokens)
             annotation_branch.append(annotation)
 
         # Filter out branches with pure commenting class labels
-        if sub_sample and class_comments == len(branch):
-            return
+        # if sub_sample and class_comments == len(branch):
+        #     return
 
         # Compute cosine similarity
         source = self.submissions[self.last_submission()].source
         prev = source
         for annotation in annotation_branch:
-            if annotation.comment_id not in self.annotations:  # Skip repeated annotations
+            if annotation.tweet_id not in self.annotations:  # Skip repeated annotations
                 compute_similarity(annotation, prev, source, branch_tokens)
                 self.analyse_annotation(annotation)  # Analyse relevant annotations
-                self.annotations[annotation.comment_id] = annotation
-                self.anno_to_branch_tokens[annotation.comment_id] = branch_tokens
-                self.anno_to_prev[annotation.comment_id] = prev
-                self.anno_to_source[annotation.comment_id] = source
+                self.annotations[annotation.tweet_id] = annotation
+                self.anno_to_branch_tokens[annotation.tweet_id] = branch_tokens
+                self.anno_to_prev[annotation.tweet_id] = prev
+                self.anno_to_source[annotation.tweet_id] = source
             prev = annotation
         self.submissions[self.last_submission()].add_annotation_branch(annotation_branch)  # This might be unnecessary
 
@@ -276,11 +282,11 @@ class RedditDataset:
     def analyse_annotation(self, annotation):
         if not annotation:
             return
-        self.handle(self.min_max['karma'], annotation.user_karma)
+        # self.handle(self.min_max['karma'], annotation.user_karma)
         self.handle(self.min_max['txt_len'], len(annotation.text))
         self.handle(self.min_max['afinn_score'], get_afinn_sentiment(annotation.text))
         self.handle(self.min_max['url_count'], annotation.tokens.count('urlurlurl'))
-        self.handle(self.min_max['quote_count'], annotation.tokens.count('refrefref'))
+        # self.handle(self.min_max['quote_count'], annotation.tokens.count('refrefref'))
         self.handle(self.min_max['cap_sequence_max_len'], len(max(re.findall(r"[A-ZÆØÅ]+", annotation.text), key=len, default='')))
         self.handle(self.min_max['tripDotCount'], annotation.text.count('...'))
         self.handle(self.min_max['q_mark_count'], annotation.text.count('?'))
@@ -298,8 +304,8 @@ class RedditDataset:
             self.handle(self.min_max['tokens_len'], word_len)
             self.handle(self.min_max['avg_word_len'],
                         sum([len(word) for word in annotation.tokens]) / word_len)
-        self.handle(self.min_max['upvotes'], annotation.upvotes)
-        self.handle(self.min_max['reply_count'], annotation.reply_count)
+        # self.handle(self.min_max['upvotes'], annotation.upvotes)
+        # self.handle(self.min_max['reply_count'], annotation.reply_count)
         # self.handle_frequent_words(annotation) # skip frequent, we dont have labels here
         self.handle_bow(annotation.tokens)
         # self.handle_ngram(annotation, self.freq_tri_gram, 3) # skil ngrams, we dont have labels here

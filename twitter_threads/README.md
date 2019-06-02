@@ -1,0 +1,1 @@
+cd into this directory. install 'scrapy' from pip. run 'scrapy crawl threads'. this scrapes all tweets from yesterday.

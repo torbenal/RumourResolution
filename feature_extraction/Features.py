@@ -1,7 +1,7 @@
 from feature_extraction.word_embeddings import avg_word_emb
-from feature_extraction.Annotation import RedditDataset
+from feature_extraction.Annotation import TwitterDataset
 from feature_extraction.afinn_sentiment import get_afinn_sentiment
-from feature_extraction.polyglot_pos import pos_tags_occurence
+# from feature_extraction.polyglot_pos import pos_tags_occurence
 import re
 
 # Module for extracting features from comment annotations
@@ -13,7 +13,7 @@ class FeatureExtractor:
     def __init__(self, dataset, test=False):
         # using passed annotations if not testing
         if test:
-            self.dataset = RedditDataset()
+            self.dataset = TwitterDataset()
         else:
             self.dataset = dataset
         self.bow_words = set()
